@@ -1,0 +1,5 @@
+.env
+.env.bak
+.env*
+livekit-agent-venv/
+KMS/
