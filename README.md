@@ -62,6 +62,16 @@ OPENWEATHER_API_KEY=your_openweather_api_key
 
 ## Running the Agent
 
+### Install required model files
+```bash
+pip agent.py download-files
+```
+
+### Console Mode
+```bash
+python agent.py console
+```
+
 ### Development Mode
 ```bash
 python agent.py dev
