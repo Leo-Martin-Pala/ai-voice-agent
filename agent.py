@@ -30,7 +30,7 @@ def format_float(value: float, use_decimals: bool = True) -> str:
 async def get_weather(
     city: Annotated[str, "Täpne, käändeta, linna nimi, mille ilmaprognoosi soovitakse teada (nt Tartus -> Tartu, Tallinnas -> Tallinn)"]
 ) -> str:
-    """Tagastab praegused ilmatingimused (OpenWeather API v2.5 /weather endpoint)."""
+    """Tagastab praegused ilmatingimused OpenWeather API-st."""
     
     api_key = os.getenv("OPENWEATHER_API_KEY")
     if not api_key:
@@ -50,7 +50,6 @@ async def get_weather(
         city_name = geo_data[0].get("name", city)
         country = geo_data[0].get("country", "")
 
-        # /data/2.5/weather (tasuta plaanis saadaval)
         weather_url = "https://api.openweathermap.org/data/2.5/weather"
         params = {
             "lat": lat,
@@ -269,6 +268,8 @@ ILMAANDMED:
 - Kui küsitakse ilmaprognoosi, kasuta get_weather_forecast funktsiooni
 - Kirjuta kõik sümbolid sõnadega välja, näiteks "13,2 kraadi" asemel "kolmteist koma kaks kraadi"
 - Ole väga verboosne ilmaandmete kirjeldamisel. Kirjuta kõik pikalt välja. näiteks (temp 13.2°C, tuul 3.5 m/s kirjelda niimodi -> temperatuur on kolmteist koma kaks kraadi ning tuule kiirus on kolm koma viis meetrit sekundis)
+- ALATI kasuta ilmaandmete funktsioone, kui kasutaja küsib ilma kohta. enne EI TOHI vastata ilmaandmete kohta, kui funktsioone pole kasutatud.
+- Kui kasutaja küsib nädala prognoosi, kasuta get_weather_forecast funktsiooni, et saada kuni 5-päevane prognoos.
 
 VASTAMISE STIIL:
 - Ole loomlik ja vestluslik
@@ -309,7 +310,5 @@ async def entrypoint(ctx: agents.JobContext):
 if __name__ == "__main__":
     agents.cli.run_app(agents.WorkerOptions(
         entrypoint_fnc=entrypoint,
-
-        # agent_name is required for explicit dispatch
         agent_name="my-telephony-agent"
     ))
