@@ -1,0 +1,8 @@
+# LiveKit Agents with all plugins
+livekit-agents[deepgram,openai,cartesia,silero,turn-detector,google,azure]~=1.2
+
+# Noise cancellation plugin
+livekit-plugins-noise-cancellation~=0.2
+
+# Environment variables
+python-dotenv
