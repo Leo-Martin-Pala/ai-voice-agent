@@ -262,6 +262,7 @@ OLULINE:
 - Ole sõbralik ja abivalmis
 - Kui ei mõista küsimust, küsi täpsustust
 - Ära kasuta markdown teksti ega koodi vormingut
+- Pärast iga tööriista (function) kasutust vasta alati kohe kasutajale, ära jäta vastust vahele
 
 ILMAANDMED:
 - Kui kasutaja küsib ilma kohta, kasuta get_weather funktsiooni praeguste tingimuste jaoks
@@ -306,7 +307,7 @@ async def entrypoint(ctx: agents.JobContext):
     )
 
     await session.generate_reply(
-        instructions="Ütle kasutajale, et oled tema ilma sünoptik. Palun küsi, millise linna ilma soovitakse teada."
+        instructions="Ütle kasutajale, et oled tema ilma sünoptik. Palun küsi, millise linna ilma soovitakse teada. Maini, et suudad ennustata iga linna ilma kuni 5 päeva ette."
     )
 
 
