@@ -8,17 +8,14 @@ An Estonian-speaking voice AI agent built with LiveKit Agents framework, enhance
 - 🌡️ **Weather Information**: Current weather conditions and forecasts
 - 📅 **Weather Forecasts**: Up to 5-day weather predictions
 - 🇪🇪 **Estonian Language**: Full Estonian language support for weather data
-- 🔊 **Text-to-Speech**: Azure TTS with Estonian voice (et-EE-AnuNeural)
-- 🎯 **Noise Cancellation**: Enhanced BVC telephony noise cancellation
 
 ## Weather Capabilities
 
 The agent can provide:
+- Weather descriptions in Estonian
 - Current weather conditions for any city
 - Weather forecasts up to 5 days
 - Temperature, humidity, wind speed, and pressure information
-- Weather descriptions in Estonian
-- Localized day names and formatting
 
 ### Example Weather Queries
 
@@ -77,7 +74,7 @@ python agent.py start
 
 ### Test Weather Functions
 ```bash
-python test_weather.py
+python debug_weather.py --help
 ```
 
 ## Architecture
@@ -88,36 +85,3 @@ The agent is built using:
 - **Azure TTS**: Estonian text-to-speech synthesis
 - **OpenWeatherMap API**: Weather data provider
 - **Function Tools**: Weather integration through LiveKit's tool system
-
-## Project Structure
-
-```
-├── agent.py                 # Main agent implementation
-├── requirements.txt         # Python dependencies
-├── test_weather.py         # Weather function testing
-├── WEATHER_README.md       # Detailed weather setup guide
-├── dispatch-rule.json     # LiveKit dispatch configuration
-└── .env                   # Environment variables (create this)
-```
-
-## Deployment
-
-The agent supports deployment to:
-- LiveKit Cloud Agents (managed service)
-- Kubernetes clusters
-- Docker containers
-- Various cloud platforms
-
-For production deployment, see the [LiveKit Agents deployment guide](https://docs.livekit.io/agents/deployment/).
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## License
-
-This project is open source and available under the MIT License.
