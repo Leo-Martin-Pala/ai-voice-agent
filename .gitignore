@@ -4,3 +4,5 @@
 .venv/
 livekit-agent-venv/
 KMS/
+__pycache__/
+generaldocs.md

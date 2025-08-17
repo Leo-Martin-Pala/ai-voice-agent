@@ -6,3 +6,6 @@ livekit-plugins-noise-cancellation~=0.2
 
 # Environment variables
 python-dotenv
+
+# HTTP requests for API calls
+requests
