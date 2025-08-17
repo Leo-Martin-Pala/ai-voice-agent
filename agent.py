@@ -12,6 +12,7 @@ from livekit.plugins import (
     azure,
     noise_cancellation,
     google,
+    openai,
 )
 from google.genai import types
 from google.genai.types import Modality
@@ -101,7 +102,7 @@ Tuule kiirus on {wind_speed_fmt} meetrit sekundis
 @function_tool()
 async def get_weather_forecast(
     city: Annotated[str, "Täpne, käändeta, linna nimi, mille ilmaprognoosi soovitakse teada (nt Tartus -> Tartu, Tallinnas -> Tallinn)"],
-    days: Annotated[int, "Päevade arv prognoosiks (1-5)"] = 3
+    days: Annotated[int, "Päevade arv prognoosiks (1-5)"] = 5
 ) -> str:
     """Tagastab kuni 5-päevase prognoosi kasutades OpenWeather API v2.5 /forecast (3h sammuga) endpointi.
     Töötlemine:
@@ -255,31 +256,27 @@ async def get_weather_forecast(
 class Assistant(Agent):
     def __init__(self) -> None:
         super().__init__(
-            instructions="""Oled kasulik eesti keelt kõnelev häälassistent. 
+            instructions="""Oled kasulik eesti keelt kõnelev häälassistent.
 OLULINE:
 - Räägi ALATI eesti keeles
 - Vasta kõikidele küsimustele, mida küsitakse
 - Ole sõbralik ja abivalmis
 - Kui ei mõista küsimust, küsi täpsustust
 - Ära kasuta markdown teksti ega koodi vormingut
-- Pärast iga tööriista (function) kasutust vasta alati kohe kasutajale, ära jäta vastust vahele
+- Pärast iga tööriista (function) kasutust vasta alati kohe kasutajale, ära viivita vastusega
+- ära kasuta emotikone ja emojisid
 
 ILMAANDMED:
 - Kui kasutaja küsib ilma kohta, kasuta get_weather funktsiooni praeguste tingimuste jaoks
 - Kui küsitakse ilmaprognoosi, kasuta get_weather_forecast funktsiooni
 - Kirjuta kõik sümbolid sõnadega välja, näiteks "13,2 kraadi" asemel "kolmteist koma kaks kraadi"
 - Ole väga verboosne ilmaandmete kirjeldamisel. Kirjuta kõik pikalt välja. näiteks (temp 13.2°C, tuul 3.5 m/s kirjelda niimodi -> temperatuur on kolmteist koma kaks kraadi ning tuule kiirus on kolm koma viis meetrit sekundis)
-- ALATI kasuta ilmaandmete funktsioone, kui kasutaja küsib ilma kohta. enne EI TOHI vastata ilmaandmete kohta, kui funktsioone pole kasutatud.
-- Kui kasutaja küsib nädala prognoosi, kasuta get_weather_forecast funktsiooni, et saada kuni 5-päevane prognoos.
+- **ALATI kasuta ilmaandmete funktsioone, kui kasutaja küsib ilma kohta. enne EI TOHI vastata ilmaandmete kohta, kui funktsioone pole kasutatud.**
+- **ALATI ütle ilma andmed viivituseta, kohe, ära, pärast seda, kui sa need kätte said. ära ütle, et "selle jaoks kasutan get_weather funktsiooni" või "ma pean selle jaosk otsima välja riigi pealinna".**
 - Kui kasutaja küsib ilma mõne maakonna või valla kohta, vali sellest piirkonnast suurim linn (nt Tartu, Pärnu, Narva, Põlva jne) ja kasuta ilma hankimiseks get_weather funktsiooni selle linna nimega.
 - Kui kasutaja küsib ilma mõne riigi kohta, vali selle riigi pealinn (nt Tallinn, Riia, Vilnius) ja kasuta ilma hankimiseks get_weather funktsiooni selle linna nimega.
-- Ole otsene ja ütle ilma andmed kohe ära. ära ütle, et "selle jaoks kasutan get_weather funktsiooni" või "ma pean selle jaosk otsima välja riigi pealinna".
 
-VASTAMISE STIIL:
-- Ole loomlik ja vestluslik
-- Anna täpseid vastuseid
-- Ole alati positiivne ja abivalmis
-- ära kasuta emotikone ja emojisid
+
 """,
             tools=[get_weather, get_weather_forecast]
         )
@@ -297,6 +294,19 @@ async def entrypoint(ctx: agents.JobContext):
             prosody=ProsodyConfig(rate=1.2)
         ),
     )
+    
+    # session = AgentSession(
+    #     stt=azure.STT(
+    #         language="et-EE",
+    #     ),
+    #     llm=google.LLM(
+    #         model="gemini-2.5-flash"
+    #     ),
+    #     tts=azure.TTS(
+    #         voice="et-EE-AnuNeural",
+    #         prosody=ProsodyConfig(rate=1.2)
+    #     ),
+    # )
 
     await session.start(
         room=ctx.room,
