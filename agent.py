@@ -3,7 +3,8 @@ import os
 import requests
 import json
 from typing import Annotated
-from datetime import datetime
+from datetime import datetime, timedelta
+from collections import Counter, defaultdict
 
 from livekit import agents
 from livekit.agents import AgentSession, Agent, RoomInputOptions, function_tool
@@ -18,7 +19,7 @@ from livekit.plugins.azure.tts import ProsodyConfig
 
 load_dotenv()
 
-# saab kasutada use_decimals=True ning kasutame koma, mitte punkti ("18,2"), mis aitab vältida kuupäeva lugemist.
+# saab valida, kas tahta arve komakohtadega või mitte.
 def format_float(value: float, use_decimals: bool = True) -> str:
     if use_decimals:
         return f"{value:.1f}".replace(".", ",")  # kasutab koma, mitte punkti
@@ -27,43 +28,59 @@ def format_float(value: float, use_decimals: bool = True) -> str:
 
 @function_tool()
 async def get_weather(
-    city: Annotated[str, "Linna nimi, mille ilma soovitakse teada"]
+    city: Annotated[str, "Täpne, käändeta, linna nimi, mille ilmaprognoosi soovitakse teada (nt Tartus -> Tartu, Tallinnas -> Tallinn)"]
 ) -> str:
-    """Tagastab praegused ilmatingimused määratud linna jaoks OpenWeatherMap-st."""
+    """Tagastab praegused ilmatingimused (OpenWeather API v2.5 /weather endpoint)."""
     
     api_key = os.getenv("OPENWEATHER_API_KEY")
     if not api_key:
         return "Vabandust, API võti pole seadistatud. Palun seadistage OPENWEATHER_API_KEY keskkonnamuutuja."
     
     try:
-        # Get current weather
-        url = f"http://api.openweathermap.org/data/2.5/weather"
+        # Geokodeerimine täpse nime ja koordinaatide jaoks
+        geo_url = "http://api.openweathermap.org/geo/1.0/direct"
+        geo_params = {"q": city, "limit": 1, "appid": api_key}
+        geo_resp = requests.get(geo_url, params=geo_params, timeout=10)
+        geo_resp.raise_for_status()
+        geo_data = geo_resp.json()
+        if not geo_data:
+            return f"Linna '{city}' ei leitud. Palun kontrollige linna nime õigsust."
+        lat = geo_data[0]["lat"]
+        lon = geo_data[0]["lon"]
+        city_name = geo_data[0].get("name", city)
+        country = geo_data[0].get("country", "")
+
+        # /data/2.5/weather (tasuta plaanis saadaval)
+        weather_url = "https://api.openweathermap.org/data/2.5/weather"
         params = {
-            "q": city,
-            "appid": api_key,
+            "lat": lat,
+            "lon": lon,
             "units": "metric",
-            "lang": "et"
+            "lang": "et",
+            "appid": api_key,
         }
-        
-        response = requests.get(url, params=params)
+        response = requests.get(weather_url, params=params, timeout=10)
         response.raise_for_status()
-        
         data = response.json()
-        
-        city_name = data["name"]
-        country = data["sys"]["country"]
-        temp = data["main"]["temp"]
-        feels_like = data["main"]["feels_like"]
-        humidity = data["main"]["humidity"]
-        pressure = data["main"]["pressure"]
-        description = data["weather"][0]["description"]
-        wind_speed = data["wind"]["speed"]
-        
-        # Ümardatud väärtused TTS jaoks
+
+        main = data.get("main", {})
+        wind = data.get("wind", {})
+        weather_arr = data.get("weather", [])
+        description = weather_arr[0].get("description", "") if weather_arr else ""
+
+        temp = main.get("temp")
+        feels_like = main.get("feels_like")
+        humidity = main.get("humidity")
+        pressure = main.get("pressure")
+        wind_speed = wind.get("speed")
+
+        if temp is None:
+            return "Praegused ilma andmed puuduvad."
+
         temp_fmt = format_float(temp)
         feels_fmt = format_float(feels_like)
         wind_speed_fmt = format_float(wind_speed)
-        
+
         weather_info = f"""
 Praegused ilmatingimused {country} linnas {city_name} on järgmised:
 Õhutemperatuur on {temp_fmt} kraadi (tundub nagu {feels_fmt} kraadi)
@@ -72,12 +89,11 @@ Tuule kiirus on {wind_speed_fmt} meetrit sekundis
 Õhurõhk on {pressure} hektopaskali
 {description}
         """.strip()
-        
         return weather_info
-        
+
     except requests.exceptions.RequestException as e:
         return f"Viga ilmaandmete hankimisel: {str(e)}"
-    except KeyError as e:
+    except KeyError:
         return f"Linna '{city}' ei leitud. Palun kontrollige linna nime õigsust."
     except Exception as e:
         return f"Ootamatu viga: {str(e)}"
@@ -85,90 +101,153 @@ Tuule kiirus on {wind_speed_fmt} meetrit sekundis
 
 @function_tool()
 async def get_weather_forecast(
-    city: Annotated[str, "Linna nimi, mille ilmaprognoosi soovitakse teada"],
+    city: Annotated[str, "Täpne, käändeta, linna nimi, mille ilmaprognoosi soovitakse teada (nt Tartus -> Tartu, Tallinnas -> Tallinn)"],
     days: Annotated[int, "Päevade arv prognoosiks (1-5)"] = 3
 ) -> str:
-    """Tagastab ilmaprognoosi määratud linna jaoks kuni 5 päeva ette OpenWeatherMap API-st."""
+    """Tagastab kuni 5-päevase prognoosi kasutades OpenWeather API v2.5 /forecast (3h sammuga) endpointi.
+    Töötlemine:
+    - Grupi 3h kirjete loend kuupäeva (kohalik aeg) järgi
+    - Arvutab iga päeva min/maks temperatuuri, keskmise päeva temperatuuri, keskmise tunde temperatuuri (feels_like), keskmise tuule kiiruse, keskmise niiskuse, keskmise rõhu
+    - Võtab kõige sagedasema ilma kirjelduse
+    NB: Tasuta /forecast annab kuni ~5 päeva (40 * 3h kirjet)."""
     
     api_key = os.getenv("OPENWEATHER_API_KEY")
     if not api_key:
         return "Vabandust, ilma API võti pole seadistatud. Palun seadistage OPENWEATHER_API_KEY keskkonnamuutuja."
     
-    if days < 1 or days > 5:
-        days = 3
+    # Normaliseeri päevade arv 1..5
+    if days < 1:
+        days = 1
+    if days > 5:
+        days = 5
     
     try:
-        # Get weather forecast
-        url = f"http://api.openweathermap.org/data/2.5/forecast"
+        # Geokodeerimine
+        geo_url = "http://api.openweathermap.org/geo/1.0/direct"
+        geo_params = {"q": city, "limit": 1, "appid": api_key}
+        geo_resp = requests.get(geo_url, params=geo_params, timeout=10)
+        geo_resp.raise_for_status()
+        geo_data = geo_resp.json()
+        if not geo_data:
+            return f"Linna '{city}' ei leitud. Kas saad palun uuesti linna nime öelda?"
+        lat = geo_data[0]["lat"]
+        lon = geo_data[0]["lon"]
+        city_name = geo_data[0].get("name", city)
+        country = geo_data[0].get("country", "")
+
+        # /data/2.5/forecast
+        forecast_url = "https://api.openweathermap.org/data/2.5/forecast"
         params = {
-            "q": city,
-            "appid": api_key,
+            "lat": lat,
+            "lon": lon,
             "units": "metric",
-            "lang": "et"
+            "lang": "et",
+            "appid": api_key,
         }
-        
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        
-        data = response.json()
-        
-        city_name = data["city"]["name"]
-        country = data["city"]["country"]
+        resp = requests.get(forecast_url, params=params, timeout=15)
+        resp.raise_for_status()
+        f_data = resp.json()
 
-        forecast_info = f"Ilmaprognoos järgmiseks {days} päevaks {country} linnas {city_name},:\n\n"
+        entries = f_data.get("list", [])
+        if not entries:
+            return "Prognoosi andmed puuduvad."
 
-        # Group forecasts by day
-        current_day = None
-        day_count = 0
+        tz_offset = f_data.get("city", {}).get("timezone", 0)  # sekundites
+
+        # Grupeeri kuupäeva järgi (kohalik aeg = UTC + offset)
+        grouped = defaultdict(list)
+        for item in entries:
+            dt_utc = datetime.utcfromtimestamp(item.get("dt"))
+            local_dt = dt_utc + timedelta(seconds=tz_offset)
+            date_key = local_dt.date()
+            grouped[date_key].append(item)
         
-        for item in data["list"]:
-            if day_count >= days:
-                break
-                
-            date = item["dt_txt"].split(" ")[0]
-            time = item["dt_txt"].split(" ")[1]
+        # Sorteeritud kuupäevad
+        dates_sorted = sorted(grouped.keys())
+        # Piira soovitud päevade arvuga
+        dates_selected = dates_sorted[:days]
+
+        day_names_et = {
+            "Monday": "Esmaspäeval",
+            "Tuesday": "Teisipäeval", 
+            "Wednesday": "Kolmapäeval",
+            "Thursday": "Neljapäeval",
+            "Friday": "Reedel",
+            "Saturday": "Laupäeval",
+            "Sunday": "Pühapäeval"
+        }
+
+        forecast_info = f"Ilmaprognoos järgnevaks {len(dates_selected)} päevaks {country} linnas {city_name}:\n\n"
+
+        for date_key in dates_selected:
+            items = grouped[date_key]
+            temps = []
+            temps_min = []
+            temps_max = []
+            feels = []
+            winds = []
+            hums = []
+            presses = []
+            desc_list = []
+            for it in items:
+                main = it.get("main", {})
+                temps.append(main.get("temp"))
+                temps_min.append(main.get("temp_min"))
+                temps_max.append(main.get("temp_max"))
+                feels.append(main.get("feels_like"))
+                winds.append(it.get("wind", {}).get("speed"))
+                hums.append(main.get("humidity"))
+                presses.append(main.get("pressure"))
+                w_arr = it.get("weather", [])
+                if w_arr:
+                    desc_list.append(w_arr[0].get("description", ""))
+            # Filtreeri None väärtused
+            def clean(vals):
+                return [v for v in vals if v is not None]
+            temps_c = clean(temps)
+            temps_min_c = clean(temps_min)
+            temps_max_c = clean(temps_max)
+            feels_c = clean(feels)
+            winds_c = clean(winds)
+            hums_c = clean(hums)
+            presses_c = clean(presses)
             
-            # Only show midday forecasts (12:00) for each day
-            if time == "12:00:00":
-                if current_day != date:
-                    current_day = date
-                    day_count += 1
-                    
-                    if day_count > days:
-                        break
-                
-                temp = item["main"]["temp"]
-                description = item["weather"][0]["description"]
-                wind_speed = item["wind"]["speed"]
-                humidity = item["main"]["humidity"]
-                
-                temp_fmt = format_float(temp)
-                wind_speed_fmt = format_float(wind_speed)
+            if not temps_c:
+                continue
+            avg_temp = sum(temps_c)/len(temps_c)
+            avg_feels = sum(feels_c)/len(feels_c) if feels_c else avg_temp
+            min_temp = min(temps_min_c or temps_c)
+            max_temp = max(temps_max_c or temps_c)
+            avg_wind = sum(winds_c)/len(winds_c) if winds_c else 0.0
+            avg_hum = int(round(sum(hums_c)/len(hums_c))) if hums_c else 0
+            avg_press = int(round(sum(presses_c)/len(presses_c))) if presses_c else 0
+            common_desc = ""
+            if desc_list:
+                common_desc = Counter(desc_list).most_common(1)[0][0]
 
-                # Translate day names to Estonian
-                day_name = datetime.strptime(date, "%Y-%m-%d").strftime("%A")
-                day_names_et = {
-                    "Monday": "Esmaspäeval",
-                    "Tuesday": "Teisipäeval", 
-                    "Wednesday": "Kolmapäeval",
-                    "Thursday": "Neljapäeval",
-                    "Friday": "Reedel",
-                    "Saturday": "Laupäeval",
-                    "Sunday": "Pühapäeval"
-                }
-                
-                day_name_et = day_names_et.get(day_name, day_name)
-                
-                forecast_info += f"{day_name_et} on\n"
-                forecast_info += f"õhutemperatuur {temp_fmt} kraadi\n"
-                forecast_info += f"Tuulekiirus on {wind_speed_fmt} meetrit sekundis ja õhuniiskus on {humidity} protsenti\n"
-                forecast_info += f"{description}\n\n"
-        
+            day_name = date_key.strftime("%A")
+            day_name_et = day_names_et.get(day_name, day_name)
+
+            avg_temp_fmt = format_float(avg_temp)
+            min_temp_fmt = format_float(min_temp)
+            max_temp_fmt = format_float(max_temp)
+            wind_fmt = format_float(avg_wind)
+            feels_fmt = format_float(avg_feels)
+
+            forecast_info += f"{day_name_et} on ilm järgmine:\n"
+            forecast_info += f"päeva keskmine temperatuur on {avg_temp_fmt} kraadi, mis tundub nagu {feels_fmt} kraadi. \n"
+            forecast_info += f"Päeva miinimum temperatuur on {min_temp_fmt} kraadi ja maksimum temperatuur ulatub {max_temp_fmt} kraadini. \n"
+            forecast_info += f"Tuule keskmine kiirus on {wind_fmt} meetrit sekundis, õhuniiskus on {avg_hum} protsenti ning õhurõhk on {avg_press} hektopaskalit. \n"
+            if common_desc:
+                forecast_info += f"Üldine ilma kirjeldus: {common_desc}.\n\n"
+            else:
+                forecast_info += "\n"
+
         return forecast_info.strip()
         
     except requests.exceptions.RequestException as e:
         return f"Viga ilmaandmete hankimisel: {str(e)}"
-    except KeyError as e:
+    except KeyError:
         return f"Linna '{city}' ei leitud. Kas saad palun uuesti linna nime öelda?"
     except Exception as e:
         return f"Ootamatu viga: {str(e)}"
