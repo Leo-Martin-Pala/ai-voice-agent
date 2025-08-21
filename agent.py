@@ -36,7 +36,7 @@ async def get_weather(
     
     try:
         # Geokodeerimine täpse nime ja koordinaatide jaoks
-        geo_url = "http://api.openweathermap.org/geo/1.0/direct"
+        geo_url = "https://api.openweathermap.org/geo/1.0/direct"
         geo_params = {"q": city, "limit": 1, "appid": api_key}
         geo_resp = requests.get(geo_url, params=geo_params, timeout=10)
         geo_resp.raise_for_status()
@@ -120,7 +120,7 @@ async def get_weather_forecast(
     
     try:
         # Geokodeerimine
-        geo_url = "http://api.openweathermap.org/geo/1.0/direct"
+        geo_url = "https://api.openweathermap.org/geo/1.0/direct"
         geo_params = {"q": city, "limit": 1, "appid": api_key}
         geo_resp = requests.get(geo_url, params=geo_params, timeout=10)
         geo_resp.raise_for_status()
