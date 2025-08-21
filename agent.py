@@ -1,7 +1,6 @@
 from dotenv import load_dotenv
 import os
 import requests
-import json
 from typing import Annotated
 from datetime import datetime, timedelta
 from collections import Counter, defaultdict
@@ -12,9 +11,7 @@ from livekit.plugins import (
     azure,
     noise_cancellation,
     google,
-    openai,
 )
-from google.genai import types
 from google.genai.types import Modality
 from livekit.plugins.azure.tts import ProsodyConfig
 
