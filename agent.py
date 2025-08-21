@@ -309,7 +309,6 @@ async def entrypoint(ctx: agents.JobContext):
     session = AgentSession(
         llm=google.beta.realtime.RealtimeModel(
             model="gemini-2.5-flash-live-preview",
-            # model="gemini-2.0-flash-live-001",
             modalities=[Modality.TEXT],
         ),
         tts=azure.TTS(
@@ -318,19 +317,6 @@ async def entrypoint(ctx: agents.JobContext):
         ),
     )
     
-    # session = AgentSession(
-    #     stt=azure.STT(
-    #         language="et-EE",
-    #     ),
-    #     llm=google.LLM(
-    #         model="gemini-2.5-flash"
-    #     ),
-    #     tts=azure.TTS(
-    #         voice="et-EE-AnuNeural",
-    #         prosody=ProsodyConfig(rate=1.2)
-    #     ),
-    # )
-
     await session.start(
         room=ctx.room,
         agent=Assistant(),

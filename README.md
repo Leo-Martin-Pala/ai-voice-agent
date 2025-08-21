@@ -60,6 +60,13 @@ OPENWEATHER_API_KEY=your_openweather_api_key
 - **Azure Speech**: Speech Services key from [Azure Portal](https://portal.azure.com/)
 - **LiveKit**: Account and keys from [LiveKit Cloud](https://cloud.livekit.io/)
 
+### 4. Configure Telephony
+
+Follow LiveKit's guide to configure your telephony/SIP provider:
+- Docs: https://docs.livekit.io/sip/
+- Set up your SIP trunk with your provider and connect it in LiveKit
+- Create an inbound rule to route calls to your agent
+
 ## Running the Agent
 
 ### Install required model files
@@ -91,7 +98,7 @@ python debug_weather.py --help
 
 The agent is built using:
 - **LiveKit Agents**: Framework for real-time voice AI
-- **Google Gemini 2.0 Flash**: Advanced language model with real-time capabilities
+- **Google Gemini 2.5 Flash**: Advanced language model with real-time capabilities
 - **Azure TTS**: Estonian text-to-speech synthesis
 - **OpenWeatherMap API**: Weather data provider
 - **Function Tools**: Weather integration through LiveKit's tool system
