@@ -7,7 +7,7 @@
     },
     "roomConfig": {
       "agents": [
-        { "agentName": "weather-telephony-agent" }
+        { "agentName": "my-telephony-agent" }
       ]
     }
   }
