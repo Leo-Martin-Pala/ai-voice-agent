@@ -13,6 +13,7 @@ from livekit.plugins import (
     google,
     cartesia,
     silero,
+    openai,
 )
 from livekit.plugins.azure.tts import ProsodyConfig
 
@@ -291,7 +292,7 @@ async def entrypoint(ctx: agents.JobContext):
     session = AgentSession(
         vad=silero.VAD.load(),
         stt=cartesia.STT(language="en"),
-        llm="openai/gpt-5-nano",
+        llm=openai.LLM(model="gpt-4o-mini"),
         tts=azure.TTS(
             voice="en-US-JennyNeural",
             prosody=ProsodyConfig(rate=1.2)
