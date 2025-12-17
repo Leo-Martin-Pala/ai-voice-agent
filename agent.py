@@ -305,8 +305,8 @@ LÕPP: JÄRGI REEGLEID TÄPSELT.
 async def entrypoint(ctx: agents.JobContext):
     session = AgentSession(
         llm=google.beta.realtime.RealtimeModel(
-            model="gemini-2.5-flash-live-preview",
-            modalities=[Modality.TEXT],
+            model="gemini-2.5-flash-native-audio-preview-12-2025",
+            # modalities=[Modality.TEXT],
         ),
         tts=azure.TTS(
             voice="et-EE-AnuNeural",
