@@ -292,7 +292,7 @@ async def entrypoint(ctx: agents.JobContext):
     session = AgentSession(
         vad=silero.VAD.load(),
         stt=cartesia.STT(language="en"),
-        llm=openai.LLM(model="gpt-5-nano"),
+        llm=openai.LLM(model="gpt-5-chat-latest"),
         tts=azure.TTS(
             voice="en-US-JennyNeural",
             prosody=ProsodyConfig(rate=1.2)
