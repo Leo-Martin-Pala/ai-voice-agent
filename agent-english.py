@@ -22,7 +22,7 @@ load_dotenv()
 # Allows choosing whether to have numbers with decimals or not.
 def format_float(value: float, use_decimals: bool = True) -> str:
     if use_decimals:
-        return f"{value:.1f}"  # uses dot
+        return f"{value:.1f}"
     return str(int(round(value)))
 
 
@@ -292,7 +292,7 @@ async def entrypoint(ctx: agents.JobContext):
     session = AgentSession(
         vad=silero.VAD.load(),
         stt=cartesia.STT(language="en"),
-        llm=openai.LLM(model="gpt-4o-mini"),
+        llm=openai.LLM(model="gpt-5-nano"),
         tts=azure.TTS(
             voice="en-US-JennyNeural",
             prosody=ProsodyConfig(rate=1.2)

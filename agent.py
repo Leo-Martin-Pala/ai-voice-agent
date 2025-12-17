@@ -11,6 +11,9 @@ from livekit.plugins import (
     azure,
     noise_cancellation,
     google,
+    cartesia,
+    silero,
+    openai,
 )
 from google.genai.types import Modality
 from livekit.plugins.azure.tts import ProsodyConfig
@@ -304,10 +307,9 @@ LÕPP: JÄRGI REEGLEID TÄPSELT.
 
 async def entrypoint(ctx: agents.JobContext):
     session = AgentSession(
-        llm=google.beta.realtime.RealtimeModel(
-            model="gemini-2.5-flash-native-audio-preview-12-2025",
-            # modalities=[Modality.TEXT],
-        ),
+        vad=silero.VAD.load(),
+        stt=cartesia.STT(language="en"),
+        llm=openai.LLM(model="gpt-5-nano"),
         tts=azure.TTS(
             voice="et-EE-AnuNeural",
             prosody=ProsodyConfig(rate=1.2)
