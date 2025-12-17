@@ -5,6 +5,7 @@ An Estonian-speaking voice AI agent built with LiveKit Agents framework, enhance
 ## Features
 
 - 🎤 **Voice Interaction**: Real-time voice conversations in Estonian
+- 🇬🇧 **English Support**: Optional English-speaking weather agent available
 - 🌡️ **Weather Information**: Current weather conditions and forecasts
 - 📅 **Weather Forecasts**: Up to 5-day weather predictions
 - 🇪🇪 **Estonian Language**: Full Estonian language support for weather data
@@ -26,13 +27,20 @@ Users can ask questions like:
 
 ## Setup
 
-### 1. Install Dependencies
+### 1. Create Virtual Environment
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows use: venv\Scripts\activate
+```
+
+### 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Environment Variables
+### 3. Environment Variables
 
 Create a `.env` file and configure the following API keys:
 
@@ -53,14 +61,14 @@ AZURE_SPEECH_REGION=your_azure_region
 OPENWEATHER_API_KEY=your_openweather_api_key
 ```
 
-### 3. Get API Keys
+### 4. Get API Keys
 
 - **OpenWeatherMap**: Free API key from [openweathermap.org](https://openweathermap.org/api)
 - **Google Gemini**: API key from [Google AI Studio](https://aistudio.google.com/)
 - **Azure Speech**: Speech Services key from [Azure Portal](https://portal.azure.com/)
 - **LiveKit**: Account and keys from [LiveKit Cloud](https://cloud.livekit.io/)
 
-### 4. Configure Telephony
+### 5. Configure Telephony
 
 Follow LiveKit's guide to configure your telephony/SIP provider:
 - Docs: https://docs.livekit.io/sip/
@@ -87,6 +95,12 @@ python agent.py dev
 ### Production Mode
 ```bash
 python agent.py start
+```
+
+### Running English Agent
+To run the English version of the agent:
+```bash
+python agent-english.py dev
 ```
 
 ### Test Weather Functions
